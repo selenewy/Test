@@ -1,0 +1,153 @@
+---
+title: "Technical Assessment for Data Analyst"
+author: "Selene Wong"
+date: "11/9/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(RCurl)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(rworldmap)
+
+```
+
+## Malaria
+
+Malaria is a life threatening parasitic disease that is transmitted through the bites of infected female *Anopheles* mosquitoes. Malaria is common in tropical areas, as the warmer temperatures allow the *Anopheles* mosquitoes to thrive.
+Symptoms of malaria include fever, headaches and vomiting. Malaria is preventable and can be treated with prescription drugs. If left untreated, malaria can result in severe illness and death.
+
+```{r malaria_data, echo=FALSE}
+malaria_deaths <- getURL("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-11-13/malaria_deaths.csv")
+malaria_deaths <- read.csv(text = malaria_deaths) %>%
+  setNames(c("country","code","year","death_rate"))
+
+malaria_deaths_age <-getURL("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-11-13/malaria_deaths_age.csv")
+malaria_deaths_age <- read.csv(text = malaria_deaths_age) %>%
+  setNames(c("SN", "country", "code", "year", "age_group", "deaths"))
+
+malaria_inc <- getURL("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-11-13/malaria_inc.csv")
+malaria_inc <- read.csv(text = malaria_inc) %>%
+  setNames(c("country", "code", "year", "incidence"))
+```
+## Malaria Incidence
+
+Incidence of malaria is the number of new cases of malaria in a year per 1000 population at risk. Figure 1 below illustrates the incidence of malaria (per 1000 population at risk) globally for the year 2015. The African continent, in particular the western region, has the highest incidence of malaria. The malaria causing parasitic species, *Plasmodium falciparum*, is prevalent on the African continent and is also the deadliest malaria parasite. Together with a very efficient mosquito that results in high transmission, this leads to a high incidence of malaria in Africa compared to the rest of the world.
+
+```{r malaria_inc, echo=FALSE, results = 'hide'}
+inc_2015 <- malaria_inc %>% 
+  subset(year == "2015")
+
+mapped_data2015 <- joinCountryData2Map(inc_2015, joinCode = "ISO3", 
+                                   nameJoinColumn = "code")
+
+par(mai=c(0,0,0.2,0),xaxs="i",yaxs="i")
+mapCountryData(mapped_data2015, nameColumnToPlot = "incidence",
+               colourPalette = "topo",
+               catMethod="fixedWidth",
+               mapTitle = "Figure 1:Malaria Incidence")
+
+```
+
+## Malaria Deaths Rates
+
+Figures 2a and 2b illustrate the changes in malaria death rates between 1990 and 2016. In 1990, the countries with the highest death rates were located in Eastern and Central Africa. By 2016, countries in Western Africa became the countries reporting the highest death rates due to malaria. From 1990 to 2016, the highest death rate fell by 30% from 203 to 135. This is a result of key interventions such as increasing access to insecticide treated mosquito nets. 
+
+```{r malaria_death, echo=FALSE, results = 'hide'}
+death_1990 <- malaria_deaths %>% 
+  subset(year == "1990")
+
+death_2016 <- malaria_deaths %>%
+  subset(year == "2016")
+
+map_death1990 <- joinCountryData2Map(death_1990, joinCode = "ISO3", 
+                                       nameJoinColumn = "code")
+
+map_death2016 <- joinCountryData2Map(death_2016, joinCode = "ISO3", 
+                                     nameJoinColumn = "code")
+
+par(mfrow=c(1,2))
+par(mai=c(0,0,0.2,0),xaxs="i",yaxs="i")
+mapParams1990 <- mapCountryData(map_death1990, nameColumnToPlot = "death_rate", 
+               colourPalette = "topo",
+               catMethod="fixedWidth",
+               addLegend=FALSE,
+               mapTitle = "Figure 2a: Death Rates for 1990")
+
+do.call(addMapLegend, c(mapParams1990, legendLabels="all",
+                        legendWidth=0.5,
+                        legendIntervals="data",
+                        legendMar=2))
+
+par(mai=c(0,0,0.2,0),xaxs="i",yaxs="i")
+mapParams2016 <- mapCountryData(map_death2016, nameColumnToPlot = "death_rate", 
+               colourPalette = "topo",
+               catMethod="fixedWidth", 
+               addLegend=FALSE,
+               mapTitle = "Figure 2b: Death Rates for 2016")
+
+do.call(addMapLegend, c(mapParams2016, legendLabels="all",
+                        legendWidth=0.5,
+                        legendIntervals="data",
+                        legendMar=2))
+```
+
+## Malaria Deaths by Ages
+
+Figures 1, 2a and 2b indicate that the African continent is most affected by malaria.  The breakdown of malaria deaths by age group worldwide and for Sub-Saharan Africa is illustrated in Figures 3a and 3b. Children under the age of 5 account for majority of the deaths worldwide and in Sub-Sahara Africa. 
+
+There was an increase in deaths globally by 23.6%, and in Sub-Sahara Africa by 27.7% from 1990 to 2000. Malaria deaths in children under 5 years also increased by 20.4% worldwide and by 23.2% in Sub-Sahara Africa.
+
+From 2000 to 2016, the total deaths due to malaria worldwide declined by 21.9%, and Sub-Sahara Africa also saw a decrease of 21.0% in total deaths. Malaria deaths in children under the age of 5 dropped by 26.8% globally and by 24.8% in Sub-Sahara Africa.
+
+```{r malaria_deathage, echo=FALSE, results = 'hide'}
+region_death <- subset(malaria_deaths_age, is.na(malaria_deaths_age$code),
+                       select = c("country", "code", "year", "age_group", "deaths"))
+
+region_death1990 <- region_death %>%
+  subset(year == 1990) %>%
+  subset(age_group == "Under 5") %>%
+  arrange(desc(deaths))
+
+region_death1990
+
+world_death_age <- malaria_deaths_age %>% 
+  subset(year == "1990" | year == "2000" | year == "2016") %>%
+  subset(country == "World") %>%
+  subset(select = c("country", "year", "age_group", "deaths")) %>%
+  arrange(year)
+
+world_death_age$year <- as.factor(world_death_age$year)
+
+world_plot <- ggplot(data= world_death_age, aes(x=year, y=deaths, fill = age_group)) +
+  geom_bar(stat="identity", width = 0.5) +
+  labs(title="Figure 3a: World", x="Year", y = "Deaths")
+
+sub_afr_death_age <- malaria_deaths_age %>% 
+  subset(year == "1990" | year == "2000" | year == "2016") %>%
+  subset(country == "Sub-Saharan Africa") %>%
+  subset(select = c("country", "year", "age_group", "deaths")) %>%
+  arrange(year)
+sub_afr_death_age
+
+sub_afr_death_age$year <- as.factor(sub_afr_death_age$year)
+
+sub_afr_plot <- ggplot(data = sub_afr_death_age, aes(x=year, y=deaths, 
+                                                     fill = age_group)) +
+  geom_bar(stat="identity", width = 0.5) +
+  labs(title="Figure 3b: Sub-Sahara Africa", x="Year", y = "Deaths")
+
+ggarrange(world_plot, sub_afr_plot,
+          ncol = 2, nrow = 1)
+
+```
+
+## Conclusion
+
+There has been good progress made throughout the years from 1990 to 2016 in reducing malaria incidence and deaths with the help of intervention measures. WHO has recently recommended the use of a malaria vaccine among children in Sub-Sahara Africa.
